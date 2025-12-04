@@ -11,6 +11,7 @@ import DailyWellness from './pages/DailyWellness';
 import CareFinder from './pages/CareFinder';
 import EmergencyReady from './pages/EmergencyReady';
 import HealthInsights from './pages/HealthInsights';
+import SettingsPage from './pages/Settings';
 
 import { ToastProvider } from './context/ToastContext';
 import Sidebar from './components/Sidebar';
@@ -47,6 +48,7 @@ function App() {
                     <Route path="/register" element={<Register />} />
 
                     <Route element={<PrivateRoute />}>
+                        <Route path="/settings" element={<SettingsPage />} />
                         <Route path="/" element={<Dashboard />} />
                         <Route path="/patients" element={<Patients />} />
                         <Route path="/wellness" element={<DailyWellness />} />
@@ -55,6 +57,7 @@ function App() {
                         <Route path="/insights" element={<HealthInsights />} />
                         <Route path="/appointments" element={<Appointments />} />
                         <Route path="/records" element={<MedicalRecords />} />
+
                     </Route>
 
                     <Route path="*" element={<Navigate to="/" />} />
