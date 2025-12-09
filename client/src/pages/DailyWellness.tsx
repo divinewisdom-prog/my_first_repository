@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Sparkles, Moon, Droplets, Activity as ActivityIcon, Heart, Brain, Target, TrendingUp } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
@@ -98,6 +99,12 @@ const DailyWellness = () => {
             } catch (error) {
                 console.error('Error fetching wellness history:', error);
                 showToast('Failed to load wellness history', 'error');
+                if (axios.isAxiosError(error)) {
+                    console.error("DEBUG: Failed URL:", error.config?.url);
+                    console.error("DEBUG: Base URL:", error.config?.baseURL);
+                    console.error("DEBUG: Full URL:", (error.config?.baseURL || '') + (error.config?.url || ''));
+                    showToast(`Debug: 404 at ${error.config?.url}`, 'error');
+                }
             }
         };
         fetchHistory();
