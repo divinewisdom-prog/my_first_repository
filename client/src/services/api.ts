@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const getBaseUrl = () => {
-    let url = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    let url = import.meta.env.VITE_API_URL || 'https://well-link-backend.onrender.com/api';
     // Remove trailing slash if present
     if (url.endsWith('/')) {
         url = url.slice(0, -1);
