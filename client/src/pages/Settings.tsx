@@ -7,7 +7,7 @@ import {
     Shield,
     Key,
     Mail,
-    Smartphone,
+
     LogOut,
     ChevronRight,
     User,
@@ -19,15 +19,15 @@ import {
     ArrowLeft,
     Camera,
     Phone,
-    Calendar,
+
     Trash2,
     FileText,
-    Settings as SettingsIcon,
-    Volume2,
+
+
     Clock,
     Target,
     Type,
-    Fingerprint,
+
     Image,
     Upload,
     X

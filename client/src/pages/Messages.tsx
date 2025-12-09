@@ -38,7 +38,7 @@ const Messages = () => {
     const [isTyping, setIsTyping] = useState(false);
     const [otherTyping, setOtherTyping] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
-    const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -350,8 +350,8 @@ const Messages = () => {
                                             >
                                                 <div
                                                     className={`max-w-[70%] p-3 rounded-2xl ${msg.sender._id === currentUser._id
-                                                            ? 'bg-gradient-primary text-white rounded-br-md'
-                                                            : 'bg-slate-100 dark:bg-slate-700 rounded-bl-md'
+                                                        ? 'bg-gradient-primary text-white rounded-br-md'
+                                                        : 'bg-slate-100 dark:bg-slate-700 rounded-bl-md'
                                                         }`}
                                                 >
                                                     <p className="break-words">{msg.content}</p>

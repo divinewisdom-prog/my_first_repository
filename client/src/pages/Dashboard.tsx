@@ -167,12 +167,8 @@ const Dashboard = () => {
                                     <NotificationDropdown
                                         notifications={notifications}
                                         onClose={() => setShowNotifications(false)}
-                                        onMarkAsRead={(id) => {
-                                            setNotifications(prev => prev.map(n =>
-                                                n.id === id ? { ...n, isRead: true } : n
-                                            ));
-                                        }}
-                                        onClearAll={() => setNotifications([])}
+                                        onMarkAsRead={handleMarkAsRead}
+                                        onClearAll={handleClearAll}
                                     />
                                 </>
                             )}

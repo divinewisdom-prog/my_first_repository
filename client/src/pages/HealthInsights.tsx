@@ -41,7 +41,7 @@ interface WellnessEntry {
 const HealthInsights = () => {
     const [showReportForm, setShowReportForm] = useState(false);
     const [wellnessHistory, setWellnessHistory] = useState<WellnessEntry[]>([]);
-    const [loading, setLoading] = useState(true);
+
 
     // Calculated metrics
     const [wellnessTrend, setWellnessTrend] = useState(0);
@@ -83,8 +83,6 @@ const HealthInsights = () => {
                 }
             } catch (error) {
                 console.error('Error fetching wellness data:', error);
-            } finally {
-                setLoading(false);
             }
         };
         fetchData();
@@ -192,7 +190,7 @@ const HealthInsights = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                         <div className="card-premium text-center animate-stagger-1">
                             <RadialGauge
-                                value={87}
+                                value={wellnessTrend}
                                 max={100}
                                 label="Wellness Trend"
                                 unit="%"
@@ -201,12 +199,12 @@ const HealthInsights = () => {
                             />
                             <p className="text-xs text-green-600 mt-3 flex items-center justify-center gap-1">
                                 <TrendingUp className="w-3 h-3" />
-                                +8% this week
+                                {trendChange > 0 ? '+' : ''}{trendChange}% this week
                             </p>
                         </div>
                         <div className="card-premium text-center animate-stagger-2">
                             <RadialGauge
-                                value={92}
+                                value={sleepConsistency}
                                 max={100}
                                 label="Sleep Consistency"
                                 unit="%"
@@ -215,12 +213,12 @@ const HealthInsights = () => {
                             />
                             <p className="text-xs text-green-600 mt-3 flex items-center justify-center gap-1">
                                 <TrendingUp className="w-3 h-3" />
-                                Excellent
+                                {getSleepLabel()}
                             </p>
                         </div>
                         <div className="card-premium text-center animate-stagger-3">
                             <RadialGauge
-                                value={78}
+                                value={activityLevel}
                                 max={100}
                                 label="Activity Level"
                                 unit="%"
@@ -229,7 +227,7 @@ const HealthInsights = () => {
                             />
                             <p className="text-xs text-amber-600 mt-3 flex items-center justify-center gap-1">
                                 <Activity className="w-3 h-3" />
-                                Moderate variation
+                                {getActivityLabel()}
                             </p>
                         </div>
                     </div>
