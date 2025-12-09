@@ -3,7 +3,7 @@ import { AlertCircle, Phone, Mail, MapPin, Heart, Plus, Sparkles, User, Edit, Tr
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import AIInsightCard from '../components/AIInsightCard';
-import axios from 'axios';
+import api from '../services/api';
 
 interface EmergencyContact {
     id: string;
@@ -182,9 +182,13 @@ const EmergencyReady = () => {
                     const { latitude, longitude } = position.coords;
 
                     // 1. Send to Backend Relay
-                    await axios.post(
-                        'http://localhost:5000/api/patients/emergency/alert',
+                    await api.post(
+                        '/patients/emergency/alert',
                         { latitude, longitude, type: 'SOS' },
+                        // Headers are handled by api interceptor usually, or can be passed if needed
+                        // But api instance usually handles auth if set up. 
+                        // Checking api.ts, it doesn't seem to auto-attach token yet?
+                        // Let's keep manual header for now but use api instance.
                         { headers: { Authorization: `Bearer ${token}` } }
                     );
 
