@@ -1,0 +1,30 @@
+name: Deploy Well-Link
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Backend deployment to Render
+      - name: Install Render CLI
+        run: npm install -g render-cli
+      - name: Deploy backend to Render
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: render deploy --service well-link-backend --branch ${{ github.ref_name }}
+
+      # Frontend deployment to Vercel
+      - name: Install Vercel CLI
+        run: npm install -g vercel
+      - name: Deploy frontend to Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          cd client
+          vercel --prod --token ${{ secrets.VERCEL_TOKEN }}
