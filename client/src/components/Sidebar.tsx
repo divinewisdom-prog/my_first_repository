@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, Calendar, FileText, Activity, Settings, LogOut, Heart, AlertCircle } from 'lucide-react';
+import { LayoutDashboard, Users, Calendar, FileText, Activity, Settings, LogOut, Heart, AlertCircle, MessageCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface SidebarProps {
@@ -8,17 +8,58 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
-    const { logout } = useAuth();
+    const { logout, user } = useAuth();
 
-    const navItems = [
-        { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-        { icon: Heart, label: 'Wellness', path: '/wellness' },
-        { icon: Users, label: 'Care Finder', path: '/care-finder' },
-        { icon: AlertCircle, label: 'Emergency', path: '/emergency' },
-        { icon: Activity, label: 'Insights', path: '/insights' },
-        { icon: Calendar, label: 'Appointments', path: '/appointments' },
-        { icon: FileText, label: 'Records', path: '/records' },
-    ];
+    // Role-based navigation
+    const getNavItems = () => {
+        const userRole = user?.role?.toLowerCase();
+
+        // Common items for all users
+        const commonItems = [
+            { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+        ];
+
+        // Patient-specific navigation
+        if (userRole === 'patient') {
+            return [
+                ...commonItems,
+                { icon: Heart, label: 'Wellness', path: '/wellness' },
+                { icon: Users, label: 'Care Finder', path: '/care-finder' },
+                { icon: MessageCircle, label: 'Messages', path: '/messages' },
+                { icon: AlertCircle, label: 'Emergency', path: '/emergency' },
+                { icon: Activity, label: 'Insights', path: '/insights' },
+                { icon: Calendar, label: 'My Appointments', path: '/appointments' },
+                { icon: FileText, label: 'My Records', path: '/records' },
+            ];
+        }
+
+        // Doctor/Admin navigation
+        if (userRole === 'doctor' || userRole === 'admin') {
+            return [
+                ...commonItems,
+                { icon: Users, label: 'Patients', path: '/patients' },
+                { icon: Calendar, label: 'Appointments', path: '/appointments' },
+                { icon: MessageCircle, label: 'Messages', path: '/messages' },
+                { icon: FileText, label: 'Records', path: '/records' },
+                { icon: Activity, label: 'Insights', path: '/insights' },
+                { icon: Heart, label: 'Wellness', path: '/wellness' },
+                { icon: AlertCircle, label: 'Emergency', path: '/emergency' },
+            ];
+        }
+
+        // Default navigation (fallback)
+        return [
+            ...commonItems,
+            { icon: Heart, label: 'Wellness', path: '/wellness' },
+            { icon: Users, label: 'Care Finder', path: '/care-finder' },
+            { icon: AlertCircle, label: 'Emergency', path: '/emergency' },
+            { icon: Activity, label: 'Insights', path: '/insights' },
+            { icon: Calendar, label: 'Appointments', path: '/appointments' },
+            { icon: FileText, label: 'Records', path: '/records' },
+        ];
+    };
+
+    const navItems = getNavItems();
 
     return (
         <>
@@ -33,7 +74,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             {/* Sidebar */}
             <div className={`h-screen w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col fixed left-0 top-0 z-30 transition-all duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
                 }`}>
-                <div className="p-6 border-b border-slate-100 dark:border-slate-700">
+                <div className="h-16 px-6 border-b border-slate-100 dark:border-slate-700 flex items-center">
                     <h1 className="text-2xl font-bold text-primary flex items-center gap-2">
                         <Activity className="w-8 h-8" />
                         Well-Link

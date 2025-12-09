@@ -11,6 +11,7 @@ import DailyWellness from './pages/DailyWellness';
 import CareFinder from './pages/CareFinder';
 import EmergencyReady from './pages/EmergencyReady';
 import HealthInsights from './pages/HealthInsights';
+import Messages from './pages/Messages';
 import SettingsPage from './pages/Settings';
 
 import { ToastProvider } from './context/ToastContext';
@@ -24,7 +25,7 @@ const Layout = () => {
         <div className="min-h-screen bg-background dark:bg-slate-900">
             <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
             <Navbar onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
-            <main className="pl-0 md:pl-64 pt-16 p-6 dark:bg-slate-900">
+            <main className="pl-0 md:pl-80 pt-16 p-6 px-12 dark:bg-slate-900">
                 <Outlet />
             </main>
         </div>
@@ -56,6 +57,7 @@ function App() {
                         <Route path="/emergency" element={<EmergencyReady />} />
                         <Route path="/insights" element={<HealthInsights />} />
                         <Route path="/appointments" element={<Appointments />} />
+                        <Route path="/messages" element={<Messages />} />
                         <Route path="/records" element={<MedicalRecords />} />
 
                     </Route>

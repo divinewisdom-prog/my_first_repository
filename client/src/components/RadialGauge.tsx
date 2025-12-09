@@ -55,13 +55,13 @@ const RadialGauge = ({ value, max, label, unit = '', color = 'blue', size = 'md'
                     />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className={`${sizes.value} font-bold text-slate-800`}>
+                    <span className={`${sizes.value} font-bold text-slate-800 dark:text-white`}>
                         {value}
                     </span>
-                    {unit && <span className="text-xs text-slate-500">{unit}</span>}
+                    {unit && <span className="text-xs text-slate-500 dark:text-slate-300">{unit}</span>}
                 </div>
             </div>
-            <span className={`${sizes.text} text-slate-600 font-medium mt-2 text-center`}>
+            <span className={`${sizes.text} text-slate-600 dark:text-slate-300 font-medium mt-2 text-center`}>
                 {label}
             </span>
         </div>

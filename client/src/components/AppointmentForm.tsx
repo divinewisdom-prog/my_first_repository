@@ -5,12 +5,13 @@ import { patientService, userService } from '../services/api';
 interface AppointmentFormProps {
     onClose: () => void;
     onSubmit: (data: any) => Promise<void>;
+    initialDoctorId?: string;
 }
 
-const AppointmentForm: React.FC<AppointmentFormProps> = ({ onClose, onSubmit }) => {
+const AppointmentForm: React.FC<AppointmentFormProps> = ({ onClose, onSubmit, initialDoctorId }) => {
     const [formData, setFormData] = useState({
         patientId: '',
-        doctorId: '',
+        doctorId: initialDoctorId || '',
         date: '',
         reason: '',
         notes: ''

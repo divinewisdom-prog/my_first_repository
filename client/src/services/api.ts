@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+    baseURL: 'http://localhost:5000/api',
     headers: {
         'Content-Type': 'application/json',
     },
@@ -54,6 +54,10 @@ export const userService = {
     getDoctors: async () => {
         const response = await api.get('/auth/doctors');
         return response.data;
+    },
+    update: async (id: string, data: any) => {
+        const response = await api.put(`/auth/users/${id}`, data);
+        return response.data;
     }
 };
 
@@ -91,6 +95,17 @@ export const wellnessService = {
     },
     delete: async (id: string) => {
         const response = await api.delete(`/wellness/${id}`);
+        return response.data;
+    }
+};
+
+export const notificationService = {
+    getAll: async () => {
+        const response = await api.get('/notifications');
+        return response.data;
+    },
+    markRead: async (id: string) => {
+        const response = await api.put(`/notifications/${id}/read`);
         return response.data;
     }
 };

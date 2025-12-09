@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
     Users,
@@ -18,9 +18,12 @@ import {
     Wind
 } from 'lucide-react';
 import HealthScoreBadge from '../components/HealthScoreBadge';
-import AIInsightCard from '../components/AIInsightCard';
+import AIInsightCardEnhanced from '../components/AIInsightCardEnhanced';
+import { generateInsights, WellnessInsight, Mood } from '../utils/aiInsights';
+import { wellnessService, notificationService } from '../services/api';
 import NotificationDropdown, { Notification } from '../components/NotificationDropdown';
 import MetricCard from '../components/MetricCard';
+import EmergencySOSButton from '../components/EmergencySOSButton';
 
 // Smart Navigation Card Component
 const NavigationCard = ({ icon: Icon, title, description, badge, onClick, delay }: any) => (
@@ -53,53 +56,71 @@ const NavigationCard = ({ icon: Icon, title, description, badge, onClick, delay 
 const Dashboard = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
     const [currentTime, setCurrentTime] = useState(new Date());
 
     // Notification State
     const [showNotifications, setShowNotifications] = useState(false);
-    const [notifications, setNotifications] = useState<Notification[]>([
-        {
-            id: '1',
-            type: 'appointment',
-            title: 'Dr. Sarah Wilson',
-            message: 'Annual check-up tomorrow at 10:00 AM',
-            time: 'Tomorrow, 10:00 AM',
-            read: false,
-            link: '/appointments'
-        },
-        {
-            id: '2',
-            type: 'medication',
-            title: 'Vitamin D',
-            message: 'Time to take your daily supplement',
-            time: '2 hours ago',
-            read: false,
-            link: '/wellness'
-        },
-        {
-            id: '3',
-            type: 'achievement',
-            title: 'Hydration Hero',
-            message: 'You hit your water goal 3 days in a row!',
-            time: 'Yesterday',
-            read: true,
-            link: '/wellness'
-        },
-        {
-            id: '4',
-            type: 'insight',
-            title: 'Sleep Analysis',
-            message: 'Your sleep quality has improved by 15% this week.',
-            time: '2 days ago',
-            read: true,
-            link: '/insights'
-        }
-    ]);
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+
+    // AI Insights State
+    const [insights, setInsights] = useState<WellnessInsight[]>([]);
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+
+        // Fetch real notifications and wellness data
+        const fetchData = async () => {
+            try {
+                const notifs = await notificationService.getAll();
+                setNotifications(notifs);
+
+                // Fetch latest wellness entry for insights
+                const history = await wellnessService.getHistory();
+                if (history && history.length > 0) {
+                    const latest = history[0];
+                    const generated = generateInsights({
+                        sleep: latest.sleepHours,
+                        water: latest.waterGlasses,
+                        exercise: latest.exerciseMinutes,
+                        energy: latest.energyLevel,
+                        mood: latest.mood as Mood
+                    });
+                    setInsights(generated);
+                }
+            } catch (error) {
+                console.error('Failed to fetch dashboard data', error);
+            }
+        };
+
+        fetchData();
+
         return () => clearInterval(timer);
-    }, []);
+    }, [location]);
+
+    const handleMarkAsRead = async (id: string) => {
+        try {
+            await notificationService.markRead(id);
+            setNotifications(prev => prev.map(n =>
+                n.id === id ? { ...n, isRead: true } : n
+            )); // Optimistic update
+
+            // Refetch to sync (optional, but good for lazy generation if marking read triggers something)
+            // const data = await notificationService.getAll();
+            // setNotifications(data);
+        } catch (error) {
+            console.error('Failed to mark as read', error);
+        }
+    };
+
+    const handleClearAll = async () => {
+        try {
+            await notificationService.markRead('all');
+            setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+        } catch (error) {
+            console.error('Failed to clear all', error);
+        }
+    };
 
 
     const getGreeting = () => {
@@ -127,11 +148,12 @@ const Dashboard = () => {
 
                         <div className="relative">
                             <button
+                                data-testid="notification-bell"
                                 onClick={() => setShowNotifications(!showNotifications)}
                                 className="relative p-3 bg-white dark:bg-slate-800 rounded-2xl shadow-md hover:shadow-lg transition-all"
                             >
                                 <Bell className="w-6 h-6 text-slate-600 dark:text-slate-300" />
-                                {notifications.some(n => !n.read) && (
+                                {notifications.some(n => !n.isRead) && (
                                     <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                                 )}
                             </button>
@@ -147,7 +169,7 @@ const Dashboard = () => {
                                         onClose={() => setShowNotifications(false)}
                                         onMarkAsRead={(id) => {
                                             setNotifications(prev => prev.map(n =>
-                                                n.id === id ? { ...n, read: true } : n
+                                                n.id === id ? { ...n, isRead: true } : n
                                             ));
                                         }}
                                         onClearAll={() => setNotifications([])}
@@ -222,7 +244,7 @@ const Dashboard = () => {
 
                     {/* Health Metrics */}
                     <div>
-                        <h2 className="text-2xl font-bold text-slate-900 mb-6">Today's Metrics</h2>
+                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Today's Metrics</h2>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                             <MetricCard
                                 title="Sleep Quality"
@@ -268,8 +290,8 @@ const Dashboard = () => {
                                 </div>
                                 <span className="text-xs text-green-600 font-semibold">+12%</span>
                             </div>
-                            <h3 className="text-3xl font-bold text-slate-900">1,234</h3>
-                            <p className="text-sm text-slate-600 mt-1">Total Patients</p>
+                            <h3 className="text-3xl font-bold text-slate-900 dark:text-white">1,234</h3>
+                            <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">Total Patients</p>
                         </div>
 
                         <div className="bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all">
@@ -279,8 +301,8 @@ const Dashboard = () => {
                                 </div>
                                 <span className="text-xs text-green-600 font-semibold">+8%</span>
                             </div>
-                            <h3 className="text-3xl font-bold text-slate-900">342</h3>
-                            <p className="text-sm text-slate-600 mt-1">Appointments</p>
+                            <h3 className="text-3xl font-bold text-slate-900 dark:text-white">342</h3>
+                            <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">Appointments</p>
                         </div>
 
                         <div className="bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all">
@@ -290,8 +312,8 @@ const Dashboard = () => {
                                 </div>
                                 <span className="text-xs text-green-600 font-semibold">+24%</span>
                             </div>
-                            <h3 className="text-3xl font-bold text-slate-900">98.7%</h3>
-                            <p className="text-sm text-slate-600 mt-1">Health Score</p>
+                            <h3 className="text-3xl font-bold text-slate-900 dark:text-white">98.7%</h3>
+                            <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">Health Score</p>
                         </div>
                     </div>
                 </div>
@@ -303,39 +325,50 @@ const Dashboard = () => {
                             <div className="p-2 bg-gradient-ai rounded-xl">
                                 <Sparkles className="w-5 h-5 text-white" />
                             </div>
-                            <h2 className="text-xl font-bold text-slate-900">AI Insights</h2>
+                            <h2 className="text-xl font-bold text-slate-900 dark:text-white">AI Insights</h2>
                         </div>
 
                         <div className="space-y-4 max-h-[600px] overflow-y-auto custom-scrollbar pr-2">
-                            <AIInsightCard
-                                message="Your hydration is trending down — try drinking 200ml more water today"
-                                icon="💧"
-                            />
-                            <AIInsightCard
-                                message="AI predicts energy peak at 3pm, schedule workouts then for best results"
-                                icon="⚡"
-                            />
-                            <AIInsightCard
-                                message="Sleep pattern analysis shows improved deep sleep cycles this week"
-                                icon="😴"
-                            />
-                            <AIInsightCard
-                                message="Your stress levels are optimal. Keep up the meditation routine!"
-                                icon="🧘"
-                            />
+                            {insights.length > 0 ? (
+                                insights.map(insight => (
+                                    <AIInsightCardEnhanced
+                                        key={insight.id}
+                                        {...insight}
+                                    />
+                                ))
+                            ) : (
+                                <div className="text-center p-6 text-slate-500">
+                                    <Sparkles className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                                    <p>No insights yet. Track your wellness to get AI recommendations!</p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Motivational Footer */}
                         <div className="mt-6 pt-6 border-t border-slate-100">
-                            <p className="text-sm text-center text-slate-600 font-medium">
+                            <p className="text-sm text-center text-slate-600 dark:text-slate-400 font-medium">
                                 You're on track! 🌟 Keep it up!
                             </p>
                         </div>
                     </div>
                 </div>
             </div>
+
+            {/* Emergency SOS Button - Always Visible */}
+            <EmergencySOSButton
+                emergencyContacts={(() => {
+                    try {
+                        const saved = localStorage.getItem('emergencyContacts');
+                        return saved ? JSON.parse(saved) : [];
+                    } catch {
+                        return [];
+                    }
+                })()}
+            />
         </div>
     );
 };
 
 export default Dashboard;
+
+

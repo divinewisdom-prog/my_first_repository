@@ -23,6 +23,7 @@ const Patients = () => {
     const fetchPatients = async () => {
         try {
             const data = await patientService.getAll();
+            console.log('Fetched patients:', data);
             setPatients(data);
         } catch (error) {
             console.error('Error fetching patients:', error);

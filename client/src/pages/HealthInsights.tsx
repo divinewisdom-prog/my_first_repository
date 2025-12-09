@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BarChart3, Brain, TrendingUp, Activity, Plus, Sparkles } from 'lucide-react';
 
 import RadialGauge from '../components/RadialGauge';
 import AIInsightCard from '../components/AIInsightCard';
 import DataTable from '../components/DataTable';
+import { wellnessService } from '../services/api';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -30,34 +31,81 @@ ChartJS.register(
     Filler
 );
 
+interface WellnessEntry {
+    energyLevel: number;
+    sleepHours: number;
+    exerciseMinutes: number;
+    date: string;
+}
+
 const HealthInsights = () => {
-
     const [showReportForm, setShowReportForm] = useState(false);
+    const [wellnessHistory, setWellnessHistory] = useState<WellnessEntry[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    // Mock data for wellness trends
+    // Calculated metrics
+    const [wellnessTrend, setWellnessTrend] = useState(0);
+    const [sleepConsistency, setSleepConsistency] = useState(0);
+    const [activityLevel, setActivityLevel] = useState(0);
+    const [trendChange, setTrendChange] = useState(0);
+
+    // Fetch wellness data
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const data = await wellnessService.getHistory(7);
+                setWellnessHistory(data);
+
+                if (data.length > 0) {
+                    // Calculate Wellness Trend (average energy level, scaled to 100)
+                    const avgEnergy = data.reduce((sum: number, e: WellnessEntry) => sum + e.energyLevel, 0) / data.length;
+                    const trend = Math.round((avgEnergy / 10) * 100);
+                    setWellnessTrend(Math.min(100, trend));
+
+                    // Calculate trend change (compare last 3 days vs previous 3 days)
+                    if (data.length >= 6) {
+                        const recent = data.slice(0, 3).reduce((sum: number, e: WellnessEntry) => sum + e.energyLevel, 0) / 3;
+                        const older = data.slice(3, 6).reduce((sum: number, e: WellnessEntry) => sum + e.energyLevel, 0) / 3;
+                        setTrendChange(Math.round(((recent - older) / older) * 100));
+                    }
+
+                    // Calculate Sleep Consistency (how close to 8 hours goal)
+                    const avgSleep = data.reduce((sum: number, e: WellnessEntry) => sum + e.sleepHours, 0) / data.length;
+                    const sleepGoal = 8;
+                    const sleepScore = Math.round(100 - Math.abs(avgSleep - sleepGoal) * 12.5);
+                    setSleepConsistency(Math.max(0, Math.min(100, sleepScore)));
+
+                    // Calculate Activity Level (exercise minutes vs 30 min goal)
+                    const avgExercise = data.reduce((sum: number, e: WellnessEntry) => sum + e.exerciseMinutes, 0) / data.length;
+                    const exerciseGoal = 30;
+                    const activityScore = Math.round((avgExercise / exerciseGoal) * 100);
+                    setActivityLevel(Math.min(100, activityScore));
+                }
+            } catch (error) {
+                console.error('Error fetching wellness data:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
+
+    // Dynamic chart data from wellness history
     const chartData = {
-        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        labels: wellnessHistory.length > 0
+            ? wellnessHistory.slice().reverse().map(e => new Date(e.date).toLocaleDateString('en-US', { weekday: 'short' }))
+            : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
         datasets: [
             {
-                label: 'Predicted Wellness Score',
-                data: [75, 78, 82, 80, 85, 87, 90],
+                label: 'Wellness Score',
+                data: wellnessHistory.length > 0
+                    ? wellnessHistory.slice().reverse().map(e => Math.round((e.energyLevel / 10) * 100))
+                    : [75, 78, 82, 80, 85, 87, 90],
                 borderColor: '#1D9BF0',
                 backgroundColor: 'rgba(29, 155, 240, 0.1)',
                 fill: true,
                 tension: 0.4,
                 pointBackgroundColor: '#1D9BF0',
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2,
-                pointRadius: 6
-            },
-            {
-                label: 'Actual Wellness Score',
-                data: [73, 76, 81, 79, 83, null, null],
-                borderColor: '#34C759',
-                backgroundColor: 'rgba(52, 199, 89, 0.1)',
-                fill: true,
-                tension: 0.4,
-                pointBackgroundColor: '#34C759',
                 pointBorderColor: '#fff',
                 pointBorderWidth: 2,
                 pointRadius: 6
@@ -99,15 +147,30 @@ const HealthInsights = () => {
         { key: 'status', label: 'Status', sortable: false }
     ];
 
+    // Get status labels
+    const getSleepLabel = () => {
+        if (sleepConsistency >= 90) return 'Excellent';
+        if (sleepConsistency >= 70) return 'Good';
+        if (sleepConsistency >= 50) return 'Moderate';
+        return 'Needs Improvement';
+    };
+
+    const getActivityLabel = () => {
+        if (activityLevel >= 100) return 'Excellent';
+        if (activityLevel >= 70) return 'Good';
+        if (activityLevel >= 50) return 'Moderate variation';
+        return 'Low activity';
+    };
+
     return (
         <div className="min-h-screen bg-gradient-health pb-8">
             {/* Header */}
             <div className="mb-8 animate-fade-in">
                 <div className="flex items-center gap-3 mb-2">
                     <BarChart3 className="w-8 h-8 text-blue-600" />
-                    <h1 className="text-4xl font-bold text-slate-900">Health Insights</h1>
+                    <h1 className="text-4xl font-bold text-slate-900 dark:text-white">Health Insights</h1>
                 </div>
-                <p className="text-slate-600 text-lg mb-4">
+                <p className="text-slate-600 dark:text-slate-300 text-lg mb-4">
                     Your health, analyzed by AI
                 </p>
 
@@ -173,11 +236,11 @@ const HealthInsights = () => {
 
                     {/* Analytics Graph */}
                     <div className="card-premium animate-stagger-4">
-                        <h2 className="text-2xl font-bold text-slate-900 mb-6">7-Day Wellness Forecast</h2>
+                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">7-Day Wellness Forecast</h2>
                         <div className="h-80">
                             <Line data={chartData} options={chartOptions} />
                         </div>
-                        <p className="text-xs text-slate-600 mt-4 flex items-center gap-1">
+                        <p className="text-xs text-slate-600 dark:text-slate-300 mt-4 flex items-center gap-1">
                             <Sparkles className="w-3 h-3 text-emerald-600" />
                             AI predicts your wellness score will improve by 12% this week
                         </p>
@@ -187,8 +250,8 @@ const HealthInsights = () => {
                     <div className="card-premium animate-stagger-5">
                         <div className="flex items-center justify-between mb-6">
                             <div>
-                                <h2 className="text-2xl font-bold text-slate-900">Community Health Reports</h2>
-                                <p className="text-sm text-slate-600 mt-1">Help improve community health insights</p>
+                                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Community Health Reports</h2>
+                                <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">Help improve community health insights</p>
                             </div>
                             <button
                                 onClick={() => setShowReportForm(true)}
@@ -227,12 +290,12 @@ const HealthInsights = () => {
 
                 {/* AI Insights Panel */}
                 <div className="space-y-6">
-                    <div className="bg-white rounded-3xl p-6 shadow-lg sticky top-6 animate-stagger-1">
+                    <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-lg sticky top-6 animate-stagger-1">
                         <div className="flex items-center gap-2 mb-6">
                             <div className="p-2 bg-gradient-ai rounded-xl">
                                 <Sparkles className="w-5 h-5 text-white" />
                             </div>
-                            <h2 className="text-xl font-bold text-slate-900">AI Predictions</h2>
+                            <h2 className="text-xl font-bold text-slate-900 dark:text-white">AI Predictions</h2>
                         </div>
 
                         <div className="space-y-4 max-h-[600px] overflow-y-auto custom-scrollbar pr-2">
@@ -260,7 +323,7 @@ const HealthInsights = () => {
 
                         {/* Microcopy */}
                         <div className="mt-6 pt-6 border-t border-slate-100">
-                            <p className="text-xs text-center text-slate-600">
+                            <p className="text-xs text-center text-slate-600 dark:text-slate-400">
                                 AI interprets your personal and community health data to provide actionable insights
                             </p>
                         </div>

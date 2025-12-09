@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { AlertCircle, Phone, Mail, MapPin, Heart, Plus, Sparkles, User } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { AlertCircle, Phone, Mail, MapPin, Heart, Plus, Sparkles, User, Edit, Trash2, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import AIInsightCard from '../components/AIInsightCard';
@@ -32,25 +32,53 @@ const EmergencyReady = () => {
     // Form State
     const [newContact, setNewContact] = useState<Partial<EmergencyContact>>({});
 
-    // State for contacts (initialized with mock data)
-    const [contacts, setContacts] = useState<EmergencyContact[]>([
-        {
-            id: '1',
-            name: 'Dr. Amah (Cardiologist)',
-            relationship: 'Doctor',
-            phone: '+234 800 111 2222',
-            address: 'Lagos University Teaching Hospital',
-            bloodType: 'O+',
-            genotype: 'AA'
-        },
-        {
-            id: '2',
-            name: 'Spouse',
-            relationship: 'Family',
-            phone: '+234 800 333 4444',
-            address: 'Home Address'
+    // Edit/Delete State
+    const [editingContact, setEditingContact] = useState<EmergencyContact | null>(null);
+
+    // Critical Numbers Modal
+    const [showCriticalNumbers, setShowCriticalNumbers] = useState(false);
+
+    // State for contacts (initialized from localStorage or defaults)
+    const [contacts, setContacts] = useState<EmergencyContact[]>(() => {
+        try {
+            const saved = localStorage.getItem('emergencyContacts');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                // Ensure compatibility with Settings.tsx data structure
+                return parsed.map((c: any) => ({
+                    ...c,
+                    // If phone is split (Settings.tsx format), join it, otherwise use phone
+                    phone: c.countryCode ? `${c.countryCode} ${c.phone}` : c.phone,
+                    address: c.address || '', // Handle missing address
+                }));
+            }
+            return [
+                {
+                    id: '1',
+                    name: 'Dr. Amah (Cardiologist)',
+                    relationship: 'Doctor',
+                    phone: '+234 800 111 2222',
+                    address: 'Lagos University Teaching Hospital',
+                    bloodType: 'O+',
+                    genotype: 'AA'
+                },
+                {
+                    id: '2',
+                    name: 'Spouse',
+                    relationship: 'Family',
+                    phone: '+234 800 333 4444',
+                    address: 'Home Address'
+                }
+            ];
+        } catch {
+            return [];
         }
-    ]);
+    });
+
+    // Save changes to localStorage
+    useEffect(() => {
+        localStorage.setItem('emergencyContacts', JSON.stringify(contacts));
+    }, [contacts]);
 
     const criticalNumbers = [
         { label: 'National Emergency', number: '112', icon: AlertCircle },
@@ -79,6 +107,24 @@ const EmergencyReady = () => {
         setNewContact({});
         setShowAddForm(false);
         showToast('Emergency contact added successfully', 'success');
+    };
+
+    const handleEditContact = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingContact) return;
+
+        setContacts(contacts.map(c =>
+            c.id === editingContact.id ? editingContact : c
+        ));
+        setEditingContact(null);
+        showToast('Contact updated successfully', 'success');
+    };
+
+    const handleDeleteContact = (id: string) => {
+        if (confirm('Are you sure you want to delete this contact?')) {
+            setContacts(contacts.filter(c => c.id !== id));
+            showToast('Contact deleted', 'info');
+        }
     };
 
     const handleShareLocation = () => {
@@ -248,7 +294,10 @@ const EmergencyReady = () => {
                             <p className="text-sm text-slate-600 mb-4">
                                 Quick access to help
                             </p>
-                            <button className="w-full text-sm py-2 bg-red-100 text-red-600 rounded-xl font-semibold hover:bg-red-200 transition-all">
+                            <button
+                                onClick={() => setShowCriticalNumbers(true)}
+                                className="w-full text-sm py-2 bg-red-100 text-red-600 rounded-xl font-semibold hover:bg-red-200 transition-all"
+                            >
                                 View All
                             </button>
                         </div>
@@ -316,7 +365,14 @@ const EmergencyReady = () => {
                                             </div>
                                         </div>
                                         <div className="flex gap-2">
-                                            <button className="p-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-all">
+                                            <button
+                                                onClick={() => {
+                                                    const cleanPhone = contact.phone.replace(/[\s\-()]/g, '');
+                                                    window.location.href = `tel:${cleanPhone}`;
+                                                }}
+                                                className="p-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-all"
+                                                title="Call"
+                                            >
                                                 <Phone className="w-4 h-4" />
                                             </button>
                                             <button
@@ -325,8 +381,23 @@ const EmergencyReady = () => {
                                                     setShowMessageModal(true);
                                                 }}
                                                 className="p-2 bg-green-100 text-green-600 rounded-xl hover:bg-green-200 transition-all"
+                                                title="Message"
                                             >
                                                 <Mail className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => setEditingContact(contact)}
+                                                className="p-2 bg-amber-100 text-amber-600 rounded-xl hover:bg-amber-200 transition-all"
+                                                title="Edit"
+                                            >
+                                                <Edit className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteContact(contact.id)}
+                                                className="p-2 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-all"
+                                                title="Delete"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
                                             </button>
                                         </div>
                                     </div>
@@ -638,6 +709,107 @@ const EmergencyReady = () => {
                                 <Sparkles className="w-3 h-3" />
                                 AI verified emergency contact saved
                             </p>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Critical Numbers Modal */}
+            {showCriticalNumbers && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowCriticalNumbers(false)}>
+                    <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-2xl font-bold text-slate-900">Critical Numbers</h2>
+                            <button onClick={() => setShowCriticalNumbers(false)} className="p-2 hover:bg-slate-100 rounded-xl">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="space-y-3">
+                            {criticalNumbers.map((num, idx) => (
+                                <a
+                                    key={idx}
+                                    href={`tel:${num.number}`}
+                                    className="flex items-center justify-between p-4 bg-red-50 rounded-xl hover:bg-red-100 transition-all"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-red-600 rounded-full text-white">
+                                            <num.icon className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-slate-900">{num.label}</h3>
+                                            <p className="text-sm text-slate-600">{num.number}</p>
+                                        </div>
+                                    </div>
+                                    <Phone className="w-5 h-5 text-red-600" />
+                                </a>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Contact Modal */}
+            {editingContact && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setEditingContact(null)}>
+                    <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-2xl font-bold text-slate-900">Edit Contact</h2>
+                            <button onClick={() => setEditingContact(null)} className="p-2 hover:bg-slate-100 rounded-xl">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <form className="space-y-4" onSubmit={handleEditContact}>
+                            <div>
+                                <label className="text-sm font-semibold text-slate-700">Name</label>
+                                <input
+                                    type="text"
+                                    className="input-field"
+                                    value={editingContact.name}
+                                    onChange={e => setEditingContact({ ...editingContact, name: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="text-sm font-semibold text-slate-700">Relationship</label>
+                                <input
+                                    type="text"
+                                    className="input-field"
+                                    value={editingContact.relationship}
+                                    onChange={e => setEditingContact({ ...editingContact, relationship: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="text-sm font-semibold text-slate-700">Phone</label>
+                                <input
+                                    type="tel"
+                                    className="input-field"
+                                    value={editingContact.phone}
+                                    onChange={e => setEditingContact({ ...editingContact, phone: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="text-sm font-semibold text-slate-700">Address</label>
+                                <textarea
+                                    className="input-field"
+                                    rows={2}
+                                    value={editingContact.address}
+                                    onChange={e => setEditingContact({ ...editingContact, address: e.target.value })}
+                                />
+                            </div>
+                            <div className="flex gap-3 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setEditingContact(null)}
+                                    className="flex-1 px-6 py-3 bg-slate-100 text-slate-700 rounded-2xl font-semibold hover:bg-slate-200 transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="flex-1 btn-primary"
+                                >
+                                    Save Changes
+                                </button>
+                            </div>
                         </form>
                     </div>
                 </div>

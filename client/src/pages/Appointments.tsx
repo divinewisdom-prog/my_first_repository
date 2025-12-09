@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Calendar as CalendarIcon, Clock, User, CheckCircle, XCircle } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { Plus, Search, Calendar as CalendarIcon, Clock, User, CheckCircle, XCircle, Video } from 'lucide-react';
 import { appointmentService } from '../services/api';
 import AppointmentForm from '../components/AppointmentForm';
 
@@ -8,6 +9,17 @@ const Appointments = () => {
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const location = useLocation();
+    const [preSelectedDoctorId, setPreSelectedDoctorId] = useState<string | undefined>(undefined);
+
+    useEffect(() => {
+        if (location.state?.selectedDoctorId) {
+            setPreSelectedDoctorId(location.state.selectedDoctorId);
+            setShowForm(true);
+            // Clear state so it doesn't reopen on refresh/back (optional, but good UX)
+            window.history.replaceState({}, document.title);
+        }
+    }, [location]);
 
     const fetchAppointments = async () => {
         try {
@@ -56,8 +68,8 @@ const Appointments = () => {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-slate-900">Appointments</h2>
-                    <p className="text-slate-500 text-sm">Manage scheduled appointments</p>
+                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Appointments</h2>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm">Manage scheduled appointments</p>
                 </div>
                 <button
                     onClick={() => setShowForm(true)}
@@ -95,10 +107,10 @@ const Appointments = () => {
                                         <CalendarIcon className="w-6 h-6" />
                                     </div>
                                     <div>
-                                        <h4 className="font-bold text-slate-900">
+                                        <h4 className="font-bold text-slate-900 dark:text-white">
                                             {apt.patient ? `${apt.patient.firstName} ${apt.patient.lastName}` : 'Unknown Patient'}
                                         </h4>
-                                        <div className="flex items-center gap-4 mt-1 text-sm text-slate-500">
+                                        <div className="flex items-center gap-4 mt-1 text-sm text-slate-500 dark:text-slate-400">
                                             <span className="flex items-center gap-1">
                                                 <User className="w-3 h-3" />
                                                 Dr. {apt.doctor?.name || 'Unknown'}
@@ -108,7 +120,7 @@ const Appointments = () => {
                                                 {new Date(apt.date).toLocaleString()}
                                             </span>
                                         </div>
-                                        <p className="text-sm text-slate-600 mt-2">{apt.reason}</p>
+                                        <p className="text-sm text-slate-600 dark:text-slate-300 mt-2">{apt.reason}</p>
                                     </div>
                                 </div>
 
@@ -116,6 +128,17 @@ const Appointments = () => {
                                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(apt.status)}`}>
                                         {apt.status}
                                     </span>
+
+                                    {/* Telemedicine Button */}
+                                    <button
+                                        onClick={() => window.open(`https://meet.jit.si/WellLink-Appointment-${apt._id}`, '_blank')}
+                                        className="btn-primary px-3 py-1.5 text-xs flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700"
+                                        title="Start Virtual Consultation"
+                                    >
+                                        <Video className="w-3 h-3" />
+                                        Join Call
+                                    </button>
+
                                     {apt.status === 'Scheduled' && (
                                         <div className="flex gap-1">
                                             <button
@@ -143,8 +166,12 @@ const Appointments = () => {
 
             {showForm && (
                 <AppointmentForm
-                    onClose={() => setShowForm(false)}
+                    onClose={() => {
+                        setShowForm(false);
+                        setPreSelectedDoctorId(undefined);
+                    }}
                     onSubmit={handleCreateAppointment}
+                    initialDoctorId={preSelectedDoctorId}
                 />
             )}
         </div>

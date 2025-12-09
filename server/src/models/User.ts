@@ -6,6 +6,14 @@ export interface IUser extends Document {
     email: string;
     password: string;
     role: 'doctor' | 'admin' | 'nurse' | 'patient';
+    specialty?: string;
+    phone?: string;
+    location?: string;
+    rating?: number;
+    experience?: string;
+    hospital?: string;
+    otp?: string;
+    otpExpires?: Date;
     matchPassword(enteredPassword: string): Promise<boolean>;
 }
 
@@ -14,11 +22,19 @@ const userSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     role: { type: String, enum: ['doctor', 'admin', 'nurse', 'patient'], default: 'patient' },
+    specialty: { type: String },
+    phone: { type: String },
+    location: { type: String },
+    rating: { type: Number, default: 0 },
+    experience: { type: String },
+    hospital: { type: String },
+    otp: { type: String },
+    otpExpires: { type: Date }
 }, { timestamps: true });
 
 userSchema.pre('save', async function (next) {
     if (!this.isModified('password')) {
-        next();
+        return next();
     }
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);

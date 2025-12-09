@@ -3,12 +3,13 @@ import { Bell, Calendar, Pill, Trophy, Sparkles, X, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export interface Notification {
-    id: string;
-    type: 'appointment' | 'medication' | 'achievement' | 'insight';
+    _id: string; // MongoDB ID
+    id?: string; // Fallback
+    type: 'appointment' | 'wellness' | 'medication' | 'achievement' | 'insight' | 'system';
     title: string;
     message: string;
-    time: string;
-    read: boolean;
+    createdAt: string; // Date string from backend
+    isRead: boolean;
     link?: string;
 }
 
@@ -38,7 +39,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
     };
 
     const handleNotificationClick = (notification: Notification) => {
-        onMarkAsRead(notification.id);
+        onMarkAsRead(notification._id);
         if (notification.link) {
             navigate(notification.link);
             onClose();
@@ -52,7 +53,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
                     <Bell className="w-4 h-4 text-primary" />
                     <h3 className="font-bold text-slate-900 dark:text-white">Notifications</h3>
                     <span className="bg-primary/10 text-primary text-xs px-2 py-0.5 rounded-full font-bold">
-                        {notifications.filter(n => !n.read).length}
+                        {notifications.filter(n => !n.isRead).length}
                     </span>
                 </div>
                 <div className="flex gap-2">
@@ -78,9 +79,9 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
                     <div className="divide-y divide-slate-100 dark:divide-slate-700">
                         {notifications.map((notification) => (
                             <div
-                                key={notification.id}
+                                key={notification._id}
                                 onClick={() => handleNotificationClick(notification)}
-                                className={`p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer relative group ${!notification.read ? 'bg-blue-50/30 dark:bg-blue-900/10' : ''
+                                className={`p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer relative group ${!notification.isRead ? 'bg-blue-50/30 dark:bg-blue-900/10' : ''
                                     }`}
                             >
                                 <div className="flex gap-3">
@@ -89,23 +90,23 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
                                     </div>
                                     <div className="flex-1">
                                         <div className="flex justify-between items-start mb-1">
-                                            <h4 className={`text-sm font-semibold ${!notification.read ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
+                                            <h4 className={`text-sm font-semibold ${!notification.isRead ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
                                                 {notification.title}
                                             </h4>
                                             <span className="text-xs text-slate-400 whitespace-nowrap ml-2">
-                                                {notification.time}
+                                                {new Date(notification.createdAt).toLocaleDateString()}
                                             </span>
                                         </div>
                                         <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
                                             {notification.message}
                                         </p>
                                     </div>
-                                    {!notification.read && (
+                                    {!notification.isRead && (
                                         <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    onMarkAsRead(notification.id);
+                                                    onMarkAsRead(notification._id);
                                                 }}
                                                 className="p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-full text-slate-400"
                                                 title="Mark as read"
@@ -115,7 +116,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
                                         </div>
                                     )}
                                 </div>
-                                {!notification.read && (
+                                {!notification.isRead && (
                                     <span className="absolute left-0 top-4 bottom-4 w-1 bg-primary rounded-r-full" />
                                 )}
                             </div>

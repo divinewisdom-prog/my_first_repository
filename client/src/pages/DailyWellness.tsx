@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Sparkles, Moon, Droplets, Activity as ActivityIcon, Heart, Brain, Scale, Target, TrendingUp } from 'lucide-react';
+import { ChevronLeft, Sparkles, Moon, Droplets, Activity as ActivityIcon, Heart, Brain, Target, TrendingUp } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import EnergySlider from '../components/EnergySlider';
@@ -11,7 +11,7 @@ import ThisWeekSummary from '../components/ThisWeekSummary';
 import WellnessCharts from '../components/WellnessCharts';
 import { wellnessService } from '../services/api';
 
-type Mood = 'great' | 'good' | 'okay' | 'low' | 'bad';
+import { generateInsights, generateHealthTips, Mood, WellnessInsight, HealthTip, goals } from '../utils/aiInsights';
 
 interface WellnessEntry {
     date: string;
@@ -21,6 +21,8 @@ interface WellnessEntry {
     water: number;
     exercise: number;
 }
+
+
 
 const DailyWellness = () => {
     const navigate = useNavigate();
@@ -49,6 +51,10 @@ const DailyWellness = () => {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [showInsights, setShowInsights] = useState(false);
 
+    // AI Insights State
+    const [insights, setInsights] = useState<WellnessInsight[]>([]);
+    const [healthTips, setHealthTips] = useState<HealthTip[]>([]);
+
     // Auto-complete tasks based on metrics
     useEffect(() => {
         setDailyTasks(prevTasks => prevTasks.map(task => {
@@ -69,11 +75,7 @@ const DailyWellness = () => {
     }, [waterGlasses, exerciseMinutes, sleepHours]);
 
     // Goals
-    const [goals] = useState({
-        sleep: 8,
-        water: 8,
-        exercise: 30
-    });
+
 
     // Wellness History
     const [history, setHistory] = useState<WellnessEntry[]>([]);
@@ -136,6 +138,8 @@ const DailyWellness = () => {
     const totalPoints = dailyTasks.reduce((sum, task) => sum + (task.completed ? task.points : 0), 0);
     const maxPoints = dailyTasks.reduce((sum, task) => sum + task.points, 0);
 
+    // Logic moved to utils/aiInsights.ts
+
     const handleSubmit = async () => {
         if (!selectedMood) {
             showToast('Please select your mood', 'warning');
@@ -176,11 +180,30 @@ const DailyWellness = () => {
             };
             setHistory([newEntry, ...history]);
 
+            // Generate Insights locally
+            setInsights(generateInsights({
+                sleep: sleepHours,
+                water: waterGlasses,
+                exercise: exerciseMinutes,
+                energy: energyLevel,
+                mood: selectedMood
+            }));
+
+            setHealthTips(generateHealthTips({
+                sleep: sleepHours,
+                energy: energyLevel,
+                mood: selectedMood
+            }));
+
             setShowInsights(true);
+            console.log('Wellness data saved successfully');
             showToast('Wellness data saved successfully!', 'success');
         } catch (error: any) {
             console.error('Error saving wellness data:', error);
-            showToast(error.response?.data?.message || 'Failed to save wellness data', 'error');
+            console.error('Error saving wellness data:', error);
+            // DEBUGGING: Probe the error object
+            const debugMsg = `Type: ${typeof error}, String: ${String(error)}, Msg: ${error?.message}, Resp: ${!!error?.response}`;
+            showToast(debugMsg, 'error');
         } finally {
             setIsAnalyzing(false);
         }
@@ -208,6 +231,7 @@ const DailyWellness = () => {
                             <p className="text-slate-600 dark:text-slate-400">Track your energy, sleep, mood, and vitals daily.</p>
                         </div>
                     </div>
+
                 </div>
 
                 <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl p-4 mb-6">
@@ -595,34 +619,18 @@ const DailyWellness = () => {
                         <div className="space-y-3">
                             {showInsights ? (
                                 <>
-                                    <AIInsightCardEnhanced
-                                        icon={<Moon className="w-5 h-5 text-yellow-600" />}
-                                        title="Critical Sleep Deficit Detected"
-                                        description="Analysis of your last 7 days shows you're averaging 6.2h of sleep (22% below your 8h goal). This deficit correlates with your 15% drop in energy levels. ACTION NEEDED: Set a 10:30 PM bedtime alarm tonight to achieve 8+ hours. Based on your circadian rhythm data, sleeping before 11 PM will improve sleep quality by 28% and restore your energy to baseline by day 3."
-                                        status="warning"
-                                        confidence="High"
-                                        iconBg="bg-yellow-100 dark:bg-yellow-900/40"
-                                    />
-
-                                    <AIInsightCardEnhanced
-                                        icon={<Droplets className="w-5 h-5 text-blue-600" />}
-                                        title="Optimal Hydration Strategy"
-                                        description="You're hitting your 8-glass target consistently! Data shows you drink 60% of water between 2-5 PM. OPTIMIZATION: Distribute intake evenly - drink 2 glasses upon waking (boosts metabolism by 24%), 2 glasses mid-morning, 2 at lunch, and 2 in the afternoon. This pattern will eliminate your reported 3 PM energy dips and improve cognitive performance by 12% based on your activity patterns."
-                                        status="success"
-                                        confidence="High"
-                                        iconBg="bg-blue-100 dark:bg-blue-900/40"
-                                        badge="Great job!"
-                                    />
-
-                                    <AIInsightCardEnhanced
-                                        icon={<ActivityIcon className="w-5 h-5 text-green-600" />}
-                                        title="Exercise Progression Plan"
-                                        description="Impressive 5-day streak at 42min average! Your heart rate data shows you're ready to level up. NEXT STEP: Add 2 HIIT intervals (30sec sprint + 90sec recovery) to your next 3 workouts. This will boost cardiovascular efficiency by 18% and calorie burn by 150-200 per session. Your optimal workout window is 2:30-4:00 PM when your body temperature peaks. Avoid exercise within 3 hours of bedtime to protect sleep quality."
-                                        status="success"
-                                        confidence="High"
-                                        iconBg="bg-green-100 dark:bg-green-900/40"
-                                        badge="Great job!"
-                                    />
+                                    {insights.map(insight => (
+                                        <AIInsightCardEnhanced
+                                            key={insight.id}
+                                            icon={insight.icon}
+                                            title={insight.title}
+                                            description={insight.description}
+                                            status={insight.status}
+                                            confidence={insight.confidence}
+                                            iconBg={insight.iconBg}
+                                            badge={insight.badge}
+                                        />
+                                    ))}
                                 </>
                             ) : (
                                 <div className="text-center py-8 text-slate-500 dark:text-slate-400">
@@ -650,59 +658,32 @@ const DailyWellness = () => {
                         <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">Contextual insights for this section</p>
 
                         <div className="space-y-3">
-                            <div className="bg-gradient-to-br from-orange-50 to-yellow-50 dark:from-orange-900/20 dark:to-yellow-900/20 rounded-xl p-4 border-2 border-orange-200 dark:border-orange-800">
-                                <div className="flex items-start gap-3 mb-3">
-                                    <div className="p-2 bg-orange-500 rounded-lg">
-                                        <Target className="w-5 h-5 text-white" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <h4 className="font-bold text-slate-900 dark:text-white text-sm">Peak Performance Window</h4>
-                                            <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-semibold rounded-full">Key</span>
+                            {healthTips.length > 0 ? (
+                                healthTips.map(tip => (
+                                    <div key={tip.id} className={`bg-gradient-to-br ${tip.bgGradient} rounded-xl p-4 border-2 ${tip.borderColor}`}>
+                                        <div className="flex items-start gap-3 mb-3">
+                                            <div className={`p-2 rounded-lg ${tip.iconBg}`}>
+                                                {tip.icon}
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <h4 className="font-bold text-slate-900 dark:text-white text-sm">{tip.title}</h4>
+                                                    {tip.badge && (
+                                                        <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-semibold rounded-full">{tip.badge}</span>
+                                                    )}
+                                                </div>
+                                                <p className="text-xs text-slate-700 dark:text-slate-300 mb-2">{tip.description}</p>
+                                            </div>
                                         </div>
-                                        <p className="text-xs text-slate-700 dark:text-slate-300 mb-2">Your cortisol and body temperature data shows peak physical capacity between 2:15-4:45 PM (32% higher endurance vs. morning). SPECIFIC ACTION: Schedule your most intense workout (cardio or strength training) at 2:30 PM tomorrow. You'll burn 180-220 more calories and reduce perceived exertion by 23%. Avoid scheduling meetings during this window.</p>
-                                    </div>
-                                </div>
-                                <div className="text-xs text-slate-600 dark:text-slate-400 flex items-center justify-between">
-                                    <span>AI Confidence: High (94%)</span>
-                                    <TrendingUp className="w-4 h-4 text-emerald-500" />
-                                </div>
-                            </div>
-
-                            <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl p-4 border-2 border-purple-200 dark:border-purple-800">
-                                <div className="flex items-start gap-3 mb-3">
-                                    <div className="p-2 bg-purple-500 rounded-lg">
-                                        <Moon className="w-5 h-5 text-white" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <h4 className="font-bold text-slate-900 dark:text-white text-sm mb-1">Strategic Recovery Protocol</h4>
-                                        <p className="text-xs text-slate-700 dark:text-slate-300 mb-2">ALERT: You've logged 5 consecutive high-intensity days (avg 48 min/day) with elevated heart rate patterns. Your muscle recovery markers are 67% optimal. TOMORROW'S PLAN: Do a 20-minute low-intensity yoga or walking session at 65% max heart rate, followed by 10 minutes of foam rolling. This will accelerate muscle repair by 34% and prevent overtraining injuries. Resume normal intensity on Day 7.</p>
-                                    </div>
-                                </div>
-                                <div className="text-xs text-slate-600 dark:text-slate-400 flex items-center justify-between">
-                                    <span>AI Confidence: High (91%)</span>
-                                    <TrendingUp className="w-4 h-4 text-emerald-500" />
-                                </div>
-                            </div>
-
-                            <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-4 border-2 border-green-200 dark:border-green-800">
-                                <div className="flex items-start gap-3 mb-3">
-                                    <div className="p-2 bg-green-500 rounded-lg">
-                                        <Scale className="w-5 h-5 text-white" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <h4 className="font-bold text-slate-900 dark:text-white text-sm">Precision Nutrition Protocol</h4>
-                                            <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-semibold rounded-full">Key</span>
+                                        <div className="text-xs text-slate-600 dark:text-slate-400 flex items-center justify-between">
+                                            <span>AI Confidence: {tip.confidence}</span>
+                                            <TrendingUp className="w-4 h-4 text-emerald-500" />
                                         </div>
-                                        <p className="text-xs text-slate-700 dark:text-slate-300 mb-2">Your caloric balance is perfect at +150 cal/day surplus for lean muscle gain. To optimize: eat 35g protein within 30 mins post-workout (your 3 PM window), consume 50% of daily carbs between 12-3 PM when insulin sensitivity peaks (+22% nutrient uptake), and front-load 400-500 calories at breakfast to fuel your documented 9 AM productivity peak. This splits your macros optimally across your circadian rhythm.</p>
                                     </div>
-                                </div>
-                                <div className="text-xs text-slate-600 dark:text-slate-400 flex items-center justify-between">
-                                    <span>AI Confidence: High (89%)</span>
-                                    <TrendingUp className="w-4 h-4 text-emerald-500" />
-                                </div>
-                            </div>
+                                ))
+                            ) : (
+                                <p className="text-sm text-slate-500 text-center">Submit data to see active assistant suggestions.</p>
+                            )}
                         </div>
 
                         <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
@@ -743,4 +724,4 @@ const DailyWellness = () => {
     );
 };
 
-export default DailyWellness;
+export default DailyWellness;   
